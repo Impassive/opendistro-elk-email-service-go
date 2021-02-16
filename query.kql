@@ -1,0 +1,98 @@
+{
+    "size": 0,
+    "query": {
+        "bool": {
+            "filter": [
+                {
+                    "match_phrase": {
+                        "level": {
+                            "query": "ERROR",
+                            "slop": 0,
+                            "zero_terms_query": "NONE",
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "@timestamp": {
+                            "from": "now-1h",
+                            "to": null,
+                            "include_lower": true,
+                            "include_upper": true,
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    },
+    "aggregations": {
+        "hostname_aggregation": {
+            "terms": {
+                "script": {
+                    "source": "def str =params['_source']['HOSTNAME'];def m = /-[a-z]*[0-9]+/.split(str);return m[0];",
+                    "lang": "painless"
+                },
+                "size": 10,
+                "min_doc_count": 1,
+                "shard_min_doc_count": 0,
+                "show_term_doc_count_error": false,
+                "order": [
+                    {
+                        "_count": "desc"
+                    },
+                    {
+                        "_key": "asc"
+                    }
+                ]
+            },
+            "aggregations": {
+                "logger_aggregation": {
+                    "terms": {
+                        "script": {
+                            "source": "return  params['_source']['logger_name'];",
+                            "lang": "painless"
+                        },
+                        "size": 10,
+                        "min_doc_count": 1,
+                        "shard_min_doc_count": 0,
+                        "show_term_doc_count_error": false,
+                        "order": [
+                            {
+                                "_count": "desc"
+                            },
+                            {
+                                "_key": "asc"
+                            }
+                        ]
+                    },
+                    "aggregations": {
+                        "message_aggregation": {
+                            "terms": {
+                                "script": {
+                                    "source": "def hst =params['_source']['HOSTNAME'];def m = /-[a-z]*[0-9]+/.split(hst);def str = params['_source']['stack_trace'];if (params['_source']['message'] != null && m[0]!='-some-filter-'){return params['_source']['message'];}else if (str != null && str.indexOf ('at ') != null && str.indexOf ('at ') > 0){return str.substring(0, str.indexOf('at ')-2);}",
+                                    "lang": "painless"
+                                },
+                                "size": 10,
+                                "min_doc_count": 1,
+                                "shard_min_doc_count": 0,
+                                "show_term_doc_count_error": false,
+                                "order": [
+                                    {
+                                        "_count": "desc"
+                                    },
+                                    {
+                                        "_key": "asc"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
